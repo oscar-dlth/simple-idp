@@ -1,9 +1,9 @@
 {
-    "entity_id": "https://your-idp.com",
-    "issuer": "https://your-idp.com",
-    "jwks_uri": "http://localhost:8001/.well-known/jwks.json",
+    "entity_id": "https://idp-test-5ce6eb6a47f8.herokuapp.com/",
+    "issuer": "https://idp-test-5ce6eb6a47f8.herokuapp.com/",
+    "jwks_uri": "https://idp-test-5ce6eb6a47f8.herokuapp.com//.well-known/jwks.json",
     "roles": ["openid-provider"],
-    "federation_policy_uri": "https://your-idp.com/policy",
+    "federation_policy_uri": "https://idp-test-5ce6eb6a47f8.herokuapp.com/policy",
     "signing_keys": [
       {
         "key_id": "key123",
