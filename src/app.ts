@@ -11,7 +11,7 @@ const privateKey = fs.readFileSync("src/cert/private.key", "utf8"); // Clave pri
 const publicCert = fs.readFileSync("src/cert/certificate.crt", "utf8"); // Certificado público
 
 // Configuración del IdP
-const ENTITY_ID = "https://www.carindth.com";
+const ENTITY_ID = "www.carindth.com";
 const PASSIVE_REQUESTOR_ENDPOINT = "https://www.carindth.com/wsfed";
 
 // Endpoint de metadatos
