@@ -41,7 +41,9 @@ app.get("/metadata", (req: any, res: any) => {
 
 // Endpoint WS-FED Passive
 app.get("/wsfed", (req: any, res: any) => {
-  const { code, state, session_state } = req.query;
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const code = hashParams.get("code");
+  const state = hashParams.get("state");
 
   // Verificar si el usuario está autenticado
   if (!req.cookies?.session) {
