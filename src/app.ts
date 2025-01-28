@@ -39,67 +39,83 @@ app.get("/metadata", (req: any, res: any) => {
   res.send(metadata);
 });
 
-// Endpoint principal de WS-Fed
+// Endpoint WS-FED Passive
 app.get("/wsfed", (req: any, res: any) => {
-  const wtrealm = req.query.wtrealm; // URL confiable del RP
-  const wreply = req.query.wreply; // Endpoint de retorno del RP
+  const { code, state, session_state } = req.query;
 
-  // Renderizar una página de inicio de sesión simple
+  // Verificar si el usuario está autenticado
+  if (!req.cookies?.session) {
+    // Redirigir al formulario de inicio de sesión si no hay sesión activa
+    return res.redirect(`/login?state=${state}`);
+  }
+
+  // Generar y firmar el token (usuario ya autenticado)
+  const securityToken = jwt.sign(
+    {
+      aud: "your-rp-audience",
+      iss: 'https://www.carindth.com',
+      sub: req.cookies.session.user, // Usuario autenticado
+    },
+    privateKey,
+    { algorithm: "RS256", expiresIn: "1h" }
+  );
+
+  // Construir y enviar la respuesta WS-FED
+  res.set("Content-Type", "application/x-www-form-urlencoded");
+  res.send(
+    `<html>
+      <body onload="document.forms[0].submit()">
+        <form method="post" action="${state}" enctype="application/x-www-form-urlencoded">
+          <input type="hidden" name="wctx" value="${state}" />
+          <input type="hidden" name="wresult" value="${securityToken}" />
+        </form>
+      </body>
+    </html>`
+  );
+});
+
+// Endpoint para el formulario de inicio de sesión
+app.get("/login", (req: any, res: any) => {
+  const { state } = req.query;
+
   res.send(`
-    <form action="/wsfed/login" method="POST">
-      <input type="hidden" name="wtrealm" value="${wtrealm}" />
-      <input type="hidden" name="wreply" value="${wreply}" />
-      <input type="text" name="username" placeholder="Usuario" required />
-      <input type="password" name="password" placeholder="Contraseña" required />
-      <button type="submit">Iniciar sesión</button>
-    </form>
+    <html>
+      <body>
+        <form method="post" action="/login">
+          <input type="hidden" name="state" value="${state}" />
+          <label>Usuario:</label>
+          <input type="text" name="username" required />
+          <label>Contraseña:</label>
+          <input type="password" name="password" required />
+          <button type="submit">Iniciar Sesión</button>
+        </form>
+      </body>
+    </html>
   `);
 });
 
-// Procesar el inicio de sesión
-app.post("/wsfed/login", (req: any, res: any) => {
-  const { username, password, wtrealm, wreply } = req.body;
+const users = [
+  { username: "user1", password: "password1" }, // Usuarios de ejemplo
+  { username: "user2", password: "password2" },
+];
+// Endpoint para procesar el inicio de sesión
+app.post("/login", (req: any, res: any) => {
+  const { username, password, state } = req.body;
 
-  // Autenticar usuario (reemplazar con tu lógica de autenticación)
-  if (username === "user" && password === "password") {
-    // Claims para el token
-    const claims = {
-      sub: username,
-      email: `${username}@example.com`,
-      roles: ["User"],
-    };
+  // Verificar credenciales del usuario
+  const user = users.find(
+    (u) => u.username === username && u.password === password
+  );
 
-    // Crear un token SAML firmado
-    const samlToken = jwt.sign(claims, privateKey, { algorithm: "RS256", expiresIn: "1h" });
-
-    // Construir la respuesta WS-Fed
-    const response = xmlbuilder.create("samlp:Response", { encoding: "utf-8" })
-    .att("xmlns:samlp", "urn:oasis:names:tc:SAML:2.0:protocol")
-    .att("Version", "2.0")
-    .ele("saml:Assertion")
-      .ele("saml:Subject")
-        .ele("saml:NameID", username).up() // Move back to <saml:Subject>
-      .up() // Move back to <saml:Assertion>
-      .ele("saml:AttributeStatement")
-        .ele("saml:Attribute")
-          .att("Name", "email")
-          .ele("saml:AttributeValue", claims.email).up() // Move back to <saml:Attribute>
-        .up() // Move back to <saml:AttributeStatement>
-      .up() // Move back to <saml:Assertion>
-    .up() // Move back to <samlp:Response>
-    .end({ pretty: true });
-
-    // Responder con el token SAML dentro de un formulario
-    res.send(`
-      <form action="${wreply}" method="POST">
-        <input type="hidden" name="wresult" value="${response}" />
-        <input type="hidden" name="wctx" value="${wtrealm}" />
-        <button type="submit">Continuar</button>
-      </form>
-    `);
-  } else {
-    res.status(401).send("Credenciales inválidas.");
+  if (!user) {
+    return res.status(401).send("Usuario o contraseña incorrectos.");
   }
+
+  // Crear una sesión (ejemplo simple con cookies)
+  res.cookie("session", { user: username }, { httpOnly: true });
+
+  // Redirigir al flujo original
+  res.redirect(`/wsfed?state=${state}`);
 });
 
 // Iniciar servidor
